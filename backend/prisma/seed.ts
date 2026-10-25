@@ -1,7 +1,8 @@
 import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient, Role, ServiceType, ServiceUnit } from '@prisma/client';
+import { Prisma, PrismaClient, Role, ServiceType, ServiceUnit } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { DEFAULT_SETTINGS } from '../src/settings/settings.service.js';
 
 async function main(): Promise<void> {
   const connectionString = process.env.DATABASE_URL;
@@ -29,6 +30,7 @@ async function main(): Promise<void> {
       name: process.env.ADMIN_NAME ?? 'Owner',
       email: adminEmail,
       phone: adminPhone,
+      defaultAddress: process.env.ADMIN_ADDRESS ?? 'Alamat belum diatur',
       passwordHash,
       role: Role.ADMIN,
     },
@@ -65,6 +67,20 @@ async function main(): Promise<void> {
   }
 
   console.log(`Seed selesai: admin ${adminEmail}, ${sampleServices.length} layanan contoh`);
+
+  const settingsKey = 'laundry_settings';
+  const existingSettings = await prisma.setting.findUnique({
+    where: { key: settingsKey },
+  });
+
+  if (!existingSettings) {
+    const value = DEFAULT_SETTINGS as unknown as Prisma.InputJsonValue;
+    await prisma.setting.create({
+      data: { key: settingsKey, value },
+    });
+    console.log('Seed selesai: pengaturan awal dibuat');
+  }
+
   await prisma.$disconnect();
 }
 

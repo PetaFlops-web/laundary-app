@@ -2,6 +2,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Length,
   Matches,
   MaxLength,
 } from 'class-validator';
@@ -22,6 +23,7 @@ export class UpdateProfileDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(255)
-  defaultPickupAddress?: string;
+  @IsNotEmpty()
+  @Length(10, 300, { message: 'Alamat harus 10–300 karakter' })
+  defaultAddress?: string;
 }

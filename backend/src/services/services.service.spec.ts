@@ -37,7 +37,7 @@ const mockPrisma = {
   booking: {
     count: vi.fn(),
   },
-  orderItem: {
+  order: {
     count: vi.fn(),
   },
 };
@@ -162,7 +162,7 @@ describe('ServicesService', () => {
     it('should hard delete service when not used', async () => {
       prisma.service.findUnique.mockResolvedValue(mockService);
       prisma.booking.count.mockResolvedValue(0);
-      prisma.orderItem.count.mockResolvedValue(0);
+      prisma.order.count.mockResolvedValue(0);
       prisma.service.delete.mockResolvedValue(mockService);
 
       const result = await service.remove('svc-1');
@@ -176,7 +176,7 @@ describe('ServicesService', () => {
     it('should deactivate service when used in bookings', async () => {
       prisma.service.findUnique.mockResolvedValue(mockService);
       prisma.booking.count.mockResolvedValue(1);
-      prisma.orderItem.count.mockResolvedValue(0);
+      prisma.order.count.mockResolvedValue(0);
       prisma.service.update.mockResolvedValue(mockInactiveService);
 
       const result = await service.remove('svc-1');
@@ -191,7 +191,7 @@ describe('ServicesService', () => {
     it('should deactivate service when used in order items', async () => {
       prisma.service.findUnique.mockResolvedValue(mockService);
       prisma.booking.count.mockResolvedValue(0);
-      prisma.orderItem.count.mockResolvedValue(1);
+      prisma.order.count.mockResolvedValue(1);
       prisma.service.update.mockResolvedValue(mockInactiveService);
 
       await service.remove('svc-1');
@@ -205,7 +205,7 @@ describe('ServicesService', () => {
     it('should throw ConflictException when already inactive and used', async () => {
       prisma.service.findUnique.mockResolvedValue(mockInactiveService);
       prisma.booking.count.mockResolvedValue(1);
-      prisma.orderItem.count.mockResolvedValue(0);
+      prisma.order.count.mockResolvedValue(0);
 
       await expect(service.remove('svc-2')).rejects.toThrow(ConflictException);
     });

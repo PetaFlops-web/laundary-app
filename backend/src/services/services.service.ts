@@ -84,7 +84,7 @@ export class ServicesService {
 
     const isUsed =
       (await this.prisma.booking.count({ where: { serviceId: id } })) > 0 ||
-      (await this.prisma.orderItem.count({ where: { serviceId: id } })) > 0;
+      (await this.prisma.order.count({ where: { serviceId: id } })) > 0;
 
     if (isUsed) {
       if (!service.isActive) {

@@ -8,6 +8,7 @@ export class ServiceResponseDto {
   price: string;
   unit: ServiceUnit;
   estimatedHours: number;
+  isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
 
@@ -20,6 +21,7 @@ export class ServiceResponseDto {
       price: service.price.toString(),
       unit: service.unit,
       estimatedHours: service.estimatedHours,
+      isActive: service.isActive,
       createdAt: service.createdAt,
       updatedAt: service.updatedAt,
     };

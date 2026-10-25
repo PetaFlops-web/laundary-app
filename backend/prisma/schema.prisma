@@ -27,6 +27,11 @@ enum HandoverType {
   PICKUP
 }
 
+enum FulfillmentType {
+  DELIVERY
+  SELF_PICKUP
+}
+
 enum ServiceType {
   REGULAR
   EXPRESS
@@ -38,33 +43,55 @@ enum ServiceUnit {
 }
 
 enum OrderStatus {
-  RECEIVED
-  WASHING
-  DRYING_IRONING
-  PACKED
-  READY
+  PICKED_UP
+  WEIGHED
+  AWAITING_PAYMENT
+  PAID
   COMPLETED
+  OUT_FOR_DELIVERY
+  DELIVERED
   CANCELLED
 }
 
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  EXPIRED
+  CANCELLED
+}
+
+enum Actor {
+  USER
+  ADMIN
+  SYSTEM
+}
+
+enum MessageSenderRole {
+  CUSTOMER
+  ADMIN
+}
+
 model User {
-  id                   String    @id @default(uuid())
-  name                 String
-  email                String    @unique
-  phone                String    @unique // format 62… (BR-07)
-  passwordHash         String
-  role                 Role      @default(CUSTOMER)
-  isActive             Boolean   @default(true)
-  defaultPickupAddress String?
-  lastLoginAt          DateTime?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  id              String    @id @default(uuid())
+  name            String
+  email           String    @unique
+  phone           String    @unique // format 62… (BR-07)
+  passwordHash    String
+  role            Role      @default(CUSTOMER)
+  isActive        Boolean   @default(true)
+  defaultAddress  String
+  lastLoginAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   refreshTokens       RefreshToken[]
   passwordResetTokens PasswordResetToken[]
   bookings            Booking[]
   orders              Order[]
   orderStatusLogs     OrderStatusLog[]
+  conversation        Conversation?
+  messages            Message[]
 
   @@index([email])
   @@index([phone])
@@ -109,35 +136,27 @@ model Service {
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 
-  bookings   Booking[]
-  orderItems OrderItem[]
-}
+  bookings Booking[]
+  orders   Order[]
 
-model Promotion {
-  id          String    @id @default(uuid())
-  title       String
-  description String?
-  startsAt    DateTime
-  endsAt      DateTime
-  isActive    Boolean   @default(true)
-  imageUrl    String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  @@index([isActive])
 }
 
 model Booking {
-  id                String        @id @default(uuid())
-  code              String        @unique
+  id                String          @id @default(uuid())
+  code              String          @unique
   userId            String
   serviceId         String
-  estimatedQuantity Decimal?      @db.Decimal(10, 2)
-  handoverType      HandoverType  @default(DROP_OFF)
+  estimatedQuantity Decimal?        @db.Decimal(10, 2)
+  handoverType      HandoverType    @default(DROP_OFF)
+  fulfillmentType   FulfillmentType @default(SELF_PICKUP)
   pickupAddress     String?
+  deliveryAddress   String?
   notes             String?
-  status            BookingStatus @default(PENDING)
+  status            BookingStatus   @default(PENDING)
   rejectionReason   String?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   service Service @relation(fields: [serviceId], references: [id], onDelete: Restrict)
@@ -152,37 +171,86 @@ model Order {
   code            String      @unique
   bookingId       String?     @unique
   userId          String?
+  serviceId       String
   customerName    String
   customerPhone   String
-  status          OrderStatus @default(RECEIVED)
+  deliveryAddress String?
+  status          OrderStatus @default(PICKED_UP)
+  weightKg        Decimal?    @db.Decimal(10, 3)
+  suggestedPrice  Decimal?    @db.Decimal(12, 2)
   totalPrice      Decimal?    @db.Decimal(12, 2)
-  entryAt         DateTime    @default(now())
-  estimatedDoneAt DateTime?
-  readyAt         DateTime?
-  pickedUpAt      DateTime?
+  priceNote       String?
+  pickedUpAt      DateTime    @default(now())
+  weighedAt       DateTime?
+  pricedAt        DateTime?
+  paidAt          DateTime?
+  completedAt     DateTime?
+  deliveredAt     DateTime?
   notes           String?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
   booking    Booking?         @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   user       User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
-  items      OrderItem[]
-  statusLogs OrderStatusLog[]
+  service    Service          @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  payments   Payment[]
+  delivery    Delivery?
+  statusLogs  OrderStatusLog[]
+  messages    Message[]
 
   @@index([userId])
-  @@index([status, readyAt])
+  @@index([status, pricedAt])
 }
 
-model OrderItem {
-  id        String  @id @default(uuid())
-  orderId   String
-  serviceId String
-  quantity  Decimal @db.Decimal(10, 2)
-  unitPrice Decimal @db.Decimal(12, 2)
-  subtotal  Decimal @db.Decimal(12, 2)
+model Payment {
+  id                    String        @id @default(uuid())
+  orderId               String
+  provider              String
+  providerOrderId       String        @unique
+  providerTransactionId String?
+  grossAmount           Decimal       @db.Decimal(12, 2)
+  method                String?
+  status                PaymentStatus @default(PENDING)
+  paymentToken          String?
+  paymentUrl            String?
+  expiresAt             DateTime?
+  paidAt                DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
 
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  service Service @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  order         Order                   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  webhookEvents PaymentWebhookEvent[]
+
+  @@index([orderId, status])
+  @@index([providerOrderId])
+}
+
+model PaymentWebhookEvent {
+  id              String    @id @default(uuid())
+  paymentId       String?
+  providerEventId String    @unique
+  status          String
+  signatureValid  Boolean
+  receivedAt      DateTime  @default(now())
+  processedAt     DateTime?
+
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@index([paymentId])
+}
+
+model Delivery {
+  id           String    @id @default(uuid())
+  orderId      String    @unique
+  address      String
+  courierName  String?
+  dispatchedAt DateTime?
+  deliveredAt  DateTime?
+  note         String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
 }
@@ -191,6 +259,7 @@ model OrderStatusLog {
   id              String      @id @default(uuid())
   orderId         String
   status          OrderStatus
+  actor           Actor       @default(ADMIN)
   changedByUserId String?
   note            String?
   changedAt       DateTime    @default(now())
@@ -199,6 +268,37 @@ model OrderStatusLog {
   changedBy User? @relation(fields: [changedByUserId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
+}
+
+model Conversation {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  lastMessageAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([lastMessageAt])
+}
+
+model Message {
+  id             String            @id @default(uuid())
+  conversationId String
+  senderId       String
+  senderRole     MessageSenderRole
+  orderId        String?
+  body           String
+  readAt         DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  order        Order?       @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, createdAt])
 }
 
 model Setting {

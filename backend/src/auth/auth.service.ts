@@ -45,6 +45,7 @@ export class AuthService {
           name: dto.name.trim(),
           email,
           phone,
+          defaultAddress: dto.address.trim(),
           passwordHash,
           role: Role.CUSTOMER,
         },

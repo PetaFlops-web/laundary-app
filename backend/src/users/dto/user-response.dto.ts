@@ -1,16 +1,16 @@
 import type { Role, User } from '@prisma/client';
 
 export class UserResponseDto {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  role: Role;
-  isActive: boolean;
-  defaultPickupAddress: string | null;
-  lastLoginAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
+  id!: string;
+  name!: string;
+  email!: string;
+  phone!: string;
+  role!: Role;
+  isActive!: boolean;
+  defaultAddress!: string;
+  lastLoginAt!: Date | null;
+  createdAt!: Date;
+  updatedAt!: Date;
 
   static from(user: User): UserResponseDto {
     return {
@@ -20,7 +20,7 @@ export class UserResponseDto {
       phone: user.phone,
       role: user.role,
       isActive: user.isActive,
-      defaultPickupAddress: user.defaultPickupAddress,
+      defaultAddress: user.defaultAddress,
       lastLoginAt: user.lastLoginAt,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,

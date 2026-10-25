@@ -35,8 +35,8 @@ export class UsersService {
     const data: Prisma.UserUpdateInput = {};
     if (dto.name !== undefined) data.name = dto.name;
     if (dto.phone !== undefined) data.phone = normalizePhone(dto.phone);
-    if (dto.defaultPickupAddress !== undefined) {
-      data.defaultPickupAddress = dto.defaultPickupAddress || null;
+    if (dto.defaultAddress !== undefined) {
+      data.defaultAddress = dto.defaultAddress;
     }
 
     try {

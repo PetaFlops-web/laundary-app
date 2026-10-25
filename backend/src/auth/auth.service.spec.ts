@@ -24,7 +24,7 @@ describe('AuthService', () => {
     passwordHash: PASSWORD_HASH,
     role: Role.CUSTOMER,
     isActive: true,
-    defaultPickupAddress: null,
+    defaultAddress: 'Kost Melati No. 5',
     lastLoginAt: null,
     createdAt: new Date('2026-01-01T00:00:00Z'),
     updatedAt: new Date('2026-01-01T00:00:00Z'),
@@ -76,6 +76,7 @@ describe('AuthService', () => {
         name: 'Budi',
         email: 'Budi@Example.com',
         phone: '08123456789',
+        address: 'Kost Melati No. 5, Bandar Lampung',
         password: PASSWORD,
       });
       expect(result).not.toHaveProperty('passwordHash');
@@ -101,6 +102,7 @@ describe('AuthService', () => {
           name: 'Budi',
           email: 'budi@example.com',
           phone: '08123456789',
+          address: 'Kost Melati No. 5, Bandar Lampung',
           password: PASSWORD,
         }),
       ).rejects.toThrow(ConflictException);
