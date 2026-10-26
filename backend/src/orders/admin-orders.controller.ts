@@ -67,6 +67,13 @@ export class AdminOrdersController {
     return this.ordersService.getReminders();
   }
 
+  @Get('self-pickup-reminders')
+  @ApiOperation({ summary: 'Pesanan selesai belum diambil melewati batas hari' })
+  @ApiOkResponse({ type: OrderResponseDto, isArray: true })
+  getSelfPickupReminders(): Promise<OrderResponseDto[]> {
+    return this.ordersService.getSelfPickupReminders();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Detail pesanan (admin)' })
   @ApiOkResponse({ type: OrderResponseDto })
@@ -78,6 +85,12 @@ export class AdminOrdersController {
   @ApiOperation({ summary: 'Tautan WhatsApp pengingat pembayaran' })
   getReminderLink(@Param('id') id: string): Promise<{ link: string }> {
     return this.ordersService.getReminderLink(id);
+  }
+
+  @Get(':id/self-pickup-reminder-link')
+  @ApiOperation({ summary: 'Tautan WhatsApp pengingat ambil cucian' })
+  getSelfPickupReminderLink(@Param('id') id: string): Promise<{ link: string }> {
+    return this.ordersService.getSelfPickupReminderLink(id);
   }
 
   @Patch(':id/weigh')

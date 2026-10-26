@@ -83,6 +83,18 @@ export class UpdateOrderStatusDto {
   @IsString()
   @MaxLength(500)
   note?: string;
+
+  @ApiPropertyOptional({ description: 'Nama kurir (opsional, untuk OUT_FOR_DELIVERY)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  courierName?: string;
+
+  @ApiPropertyOptional({ description: 'Override alamat pengantaran (opsional, untuk OUT_FOR_DELIVERY)' })
+  @IsOptional()
+  @IsString()
+  @Length(10, 300)
+  deliveryAddress?: string;
 }
 
 /** Query pesanan (admin & customer). */

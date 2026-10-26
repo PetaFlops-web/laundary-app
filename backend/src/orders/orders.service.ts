@@ -333,7 +333,7 @@ export class OrdersService {
   ): Promise<OrderResponseDto> {
     const order = await this.prisma.order.findUnique({
       where: { id },
-      include: { payments: true },
+      include: { payments: true, delivery: true },
     });
 
     if (!order) {
@@ -358,13 +358,47 @@ export class OrdersService {
       }
     }
 
+    // OUT_FOR_DELIVERY: validasi alamat & buat/update delivery (FR-50, FR-52)
+    if (target === OrderStatus.OUT_FOR_DELIVERY) {
+      const address = dto.deliveryAddress?.trim() || order.deliveryAddress;
+      if (!address) {
+        throw new BadRequestException('Alamat pengantaran wajib ada untuk pengiriman');
+      }
+
+      // Validasi area layanan jika deliveryArea diset (FR-52)
+      const settings = await this.settingsService.find();
+      if (!settings.deliveryEnabled) {
+        throw new ConflictException('Fitur pengantaran sedang tidak aktif');
+      }
+      if (settings.deliveryArea) {
+        const areas = settings.deliveryArea
+          .split(',')
+          .map((a) => a.trim().toLowerCase());
+        const matchesArea = areas.some((a) => address.toLowerCase().includes(a));
+        if (!matchesArea) {
+          throw new BadRequestException(
+            `Alamat pengantaran di luar area layanan (${settings.deliveryArea})`,
+          );
+        }
+      }
+
+      // Simpan override alamat di order jika diberikan
+      if (dto.deliveryAddress?.trim()) {
+        await this.prisma.order.update({
+          where: { id },
+          data: { deliveryAddress: dto.deliveryAddress.trim() },
+        });
+      }
+    }
+
     // Siapkan data update
+    const now = new Date();
     const updateData: Prisma.OrderUpdateInput = { status: target };
     if (target === OrderStatus.COMPLETED) {
-      updateData.completedAt = new Date();
+      updateData.completedAt = now;
     }
     if (target === OrderStatus.DELIVERED) {
-      updateData.deliveredAt = new Date();
+      updateData.deliveredAt = now;
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -384,8 +418,46 @@ export class OrdersService {
         },
       });
 
+      // OUT_FOR_DELIVERY: buat/update record Delivery (FR-50)
+      if (target === OrderStatus.OUT_FOR_DELIVERY) {
+        const deliveryAddress =
+          dto.deliveryAddress?.trim() || order.deliveryAddress!;
+        if (order.delivery) {
+          await tx.delivery.update({
+            where: { id: order.delivery.id },
+            data: {
+              address: deliveryAddress,
+              courierName: dto.courierName?.trim() || order.delivery.courierName,
+              dispatchedAt: now,
+            },
+          });
+        } else {
+          await tx.delivery.create({
+            data: {
+              orderId: id,
+              address: deliveryAddress,
+              courierName: dto.courierName?.trim() || null,
+              dispatchedAt: now,
+            },
+          });
+        }
+      }
+
+      // DELIVERED: update delivery.deliveredAt (FR-51)
+      if (target === OrderStatus.DELIVERED && o.delivery) {
+        await tx.delivery.update({
+          where: { id: o.delivery.id },
+          data: { deliveredAt: now },
+        });
+      }
+
       return o;
     });
+
+    // Re-fetch agar delivery data ter-update di response
+    if (target === OrderStatus.OUT_FOR_DELIVERY || target === OrderStatus.DELIVERED) {
+      return this.findOneAdmin(id);
+    }
 
     return OrderResponseDto.from(updated);
   }
@@ -480,6 +552,49 @@ export class OrdersService {
 
     const message = encodeURIComponent(
       `Halo ${order.customerName}, pesanan Anda (${order.code}) sebesar Rp${order.totalPrice?.toString() ?? '0'} belum dibayar. Silakan segera lakukan pembayaran. Terima kasih — ${settings.businessName}`,
+    );
+    const phone = order.customerPhone.replace(/^0/, '62');
+    const link = `https://wa.me/${phone}?text=${message}`;
+
+    return { link };
+  }
+
+  // ─── Self-Pickup Reminders ─────────────────────────────────────────
+
+  async getSelfPickupReminders(): Promise<OrderResponseDto[]> {
+    const settings = await this.settingsService.find();
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - settings.selfPickupReminderDays);
+
+    // Pesanan COMPLETED yang belum diantar (tetap di COMPLETED) dan
+    // completedAt sudah melewati batas hari — artinya belum diambil pelanggan.
+    const orders = await this.prisma.order.findMany({
+      where: {
+        status: OrderStatus.COMPLETED,
+        completedAt: { lte: cutoff },
+      },
+      orderBy: { completedAt: 'asc' },
+      include: ORDER_INCLUDE_BRIEF,
+    });
+
+    return orders.map((o) => OrderResponseDto.from(o));
+  }
+
+  async getSelfPickupReminderLink(id: string): Promise<{ link: string }> {
+    const order = await this.prisma.order.findUnique({ where: { id } });
+
+    if (!order) {
+      throw new NotFoundException('Pesanan tidak ditemukan');
+    }
+
+    if (order.status !== OrderStatus.COMPLETED) {
+      throw new ConflictException('Pengingat ambil hanya untuk pesanan berstatus COMPLETED');
+    }
+
+    const settings = await this.settingsService.find();
+
+    const message = encodeURIComponent(
+      `Halo ${order.customerName}, cucian Anda (${order.code}) sudah selesai dan siap diambil. Silakan segera mengambil di ${settings.businessAddress}. Terima kasih — ${settings.businessName}`,
     );
     const phone = order.customerPhone.replace(/^0/, '62');
     const link = `https://wa.me/${phone}?text=${message}`;

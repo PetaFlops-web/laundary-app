@@ -22,6 +22,7 @@ export interface LaundrySettings {
   paymentReminderDays: number;
   paymentExpiryHours: number;
   maxPendingBookings: number;
+  selfPickupReminderDays: number;
 }
 
 export const DEFAULT_SETTINGS: LaundrySettings = {
@@ -46,6 +47,7 @@ export const DEFAULT_SETTINGS: LaundrySettings = {
   paymentReminderDays: 2,
   paymentExpiryHours: 24,
   maxPendingBookings: 3,
+  selfPickupReminderDays: 3,
 };
 
 const SETTINGS_KEY = 'laundry_settings';
@@ -111,6 +113,7 @@ export class SettingsService {
       paymentReminderDays: this.int(raw.paymentReminderDays, DEFAULT_SETTINGS.paymentReminderDays),
       paymentExpiryHours: this.int(raw.paymentExpiryHours, DEFAULT_SETTINGS.paymentExpiryHours),
       maxPendingBookings: this.int(raw.maxPendingBookings, DEFAULT_SETTINGS.maxPendingBookings),
+      selfPickupReminderDays: this.int(raw.selfPickupReminderDays, DEFAULT_SETTINGS.selfPickupReminderDays),
     };
   }
 
