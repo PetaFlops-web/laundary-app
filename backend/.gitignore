@@ -3,6 +3,7 @@
 /node_modules
 /build
 docs/
+docs/*.md
 AGENT.md
 
 # TypeScript build cache
