@@ -1,0 +1,46 @@
+:root {
+  --ach-primary: #d1f3fa;
+  --ach-deep: #0b3b49;
+  --ach-mid: #3f7f90;
+  --ach-line: #8fc3d1;
+  --bs-body-font-family: 'Poppins', system-ui, sans-serif;
+  --bs-body-color: #0b3b49;
+  --bs-link-color: #0b3b49;
+  --bs-link-hover-color: #3f7f90;
+  --bs-link-color-rgb: 11, 59, 73;
+}
+
+a { font-weight: 500; text-underline-offset: 3px; }
+.text-ach-mid { color: var(--ach-mid); }
+.font-display { font-family: 'Lora', Georgia, serif; font-weight: 600; }
+
+/* Tombol utama: biru-teal tua agar kontras di atas putih */
+.btn-primary {
+  --bs-btn-bg: var(--ach-deep);
+  --bs-btn-border-color: var(--ach-deep);
+  --bs-btn-hover-bg: #082c37;
+  --bs-btn-hover-border-color: #082c37;
+  --bs-btn-active-bg: #082c37;
+  --bs-btn-active-border-color: #082c37;
+  --bs-btn-disabled-bg: var(--ach-deep);
+  --bs-btn-disabled-border-color: var(--ach-deep);
+  --bs-btn-focus-shadow-rgb: 63, 127, 144;
+  --bs-btn-border-radius: 12px;
+  height: 50px;
+  font-weight: 600;
+}
+
+.form-control {
+  min-height: 48px;
+  border: 1.5px solid var(--ach-line);
+  border-radius: 12px;
+  padding: 0.6rem 1rem;
+  color: var(--ach-deep);
+}
+.form-control::placeholder { color: #7fa9b4; }
+.form-control:focus {
+  border-color: var(--ach-deep);
+  box-shadow: 0 0 0 0.25rem rgba(63, 127, 144, 0.25);
+}
+.form-control.is-invalid { background-image: none; padding-right: 1rem; }
+textarea.form-control { min-height: 92px; resize: vertical; }
