@@ -9,9 +9,10 @@ import {
   WsException,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { verify } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import type { Role } from '@prisma/client';
 import { ChatService } from './chat.service.js';
+const { verify } = jwt;
 
 interface AuthPayload {
   sub: string;
@@ -47,8 +48,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private rateLimits = new Map<string, { count: number; windowStart: number }>();
 
   constructor(private readonly chatService: ChatService) {}
-
-  // ─── Connection lifecycle ──────────────────────────────────────────
 
   async handleConnection(client: AuthenticatedSocket): Promise<void> {
     try {
